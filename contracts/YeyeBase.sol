@@ -14,6 +14,7 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     bytes32 public constant VAULT_ROLE = keccak256("VAULT_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
+    // Name of the collection
     string public name = "YEYE Factory";
 
     // Base Blueprint
@@ -40,6 +41,9 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         _grantRole(FACTORY_ROLE, msg.sender);
     }
 
+    /*
+    * @dev add Base NFT before minting, make sure the ID is same as metadata ID
+    */
     function addBase(uint256 newId) external onlyRole(FACTORY_ROLE) {
         require(
             !tokenCheck[newId].exist,
@@ -50,6 +54,9 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         tokenCheck[newId] = newCheck;
     }
 
+    /*
+    * @dev add Redeemable NFT (Tickets, Lootbox) before minting, make sure the ID is same as metadata ID
+    */
     function addRedeemable(uint256 newId) external onlyRole(FACTORY_ROLE) {
         require(
             !tokenCheck[newId].exist,
@@ -60,6 +67,9 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         tokenCheck[newId] = newCheck;
     }
 
+    /*
+    * @dev add Equipped NFT before minting, make sure the ID is same as metadata ID
+    */
     function addEquipped(uint256 newId, YeyeBlueprint memory newToken) external onlyRole(FACTORY_ROLE) {
         require(
             !tokenCheck[newId].exist,
@@ -71,23 +81,37 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         tokenCheck[newId] = newCheck;
     }
 
+    /*
+    * @dev set Uri of Metadata
+    */
     function setUri(string memory _newUri) public onlyRole(URI_SETTER_ROLE) {
         ERC1155._setURI(_newUri);
     }
 
-    // Override uri
+    /*
+    * @dev get Uri of corresponding ID, this will produce link to uri/{ID}
+    */
     function uri(uint256 _tokenId) public view override returns (string memory) {
         return string(abi.encodePacked(ERC1155.uri(_tokenId), Strings.toString(_tokenId)));
     }
 
+    /*
+    * @dev mint already added NFT
+    */
     function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyRole(MINTER_ROLE) {
         _mint(account, id, amount, data);
     }
 
+    /*
+    * @dev batch version of mint
+    */
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public onlyRole(MINTER_ROLE) {
         _mintBatch(to, ids, amounts, data);
     }
 
+    /*
+    * @dev before token transfer hook
+    */
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override(ERC1155, ERC1155Supply) {
         /*
          * @dev check if token with corresponding id is exists
@@ -101,6 +125,9 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
+    /*
+    * @dev override required by ERC1155
+    */
     function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }

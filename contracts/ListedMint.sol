@@ -6,14 +6,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/YeyeBase.sol";
 
 contract ListedMint is Ownable {
+    // Merkle Root
     bytes32 public immutable merkleRoot;
+    // list of token ID to mint, make sure the ID is exist 
     uint256[] public tokens;
+    // count claimed token per address
     mapping(address => uint) public claimed;
-
+    // contract of token to be minted
     address public immutable tokenContract;
+    // token price
     uint public tokenPrice;
-
-    // address to be transfered
+    // address to be transfered after the sale ends
     address payable private seller;
 
     constructor(bytes32 _merkleRoot, uint256[] memory ids, address _tokenContract, uint _tokenPrice) {
@@ -23,14 +26,23 @@ contract ListedMint is Ownable {
         tokenPrice = _tokenPrice;
     }
 
+    /*
+    * @dev set seller address
+    */
     function setSeller(address payable newSeller) public onlyOwner {
         seller = newSeller;
     }
 
+    /*
+    * @dev set NFT price
+    */
     function setPrice(uint newPrice) public onlyOwner {
         tokenPrice = newPrice;
     }
 
+    /*
+    * @dev listed mint function
+    */
     function mint(bytes32[] calldata merkleProof, uint256 amount) public payable {
         uint maxMint = tokens.length;
         uint _claimed = claimed[msg.sender];
