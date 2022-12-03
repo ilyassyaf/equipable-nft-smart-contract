@@ -19,6 +19,7 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     // Base Blueprint
     struct TokenBlueprint {
         bool exist; // check if trait exist
+        bool redeemable; // check if token redeemable
         bool isEquipped; // check if Base NFT or Equipped NFT
     }
     mapping(uint256 => TokenBlueprint) public tokenCheck;
@@ -39,13 +40,23 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         _grantRole(FACTORY_ROLE, msg.sender);
     }
 
-    function addBase(uint256 newId, bool isEquipped) external onlyRole(FACTORY_ROLE) {
+    function addBase(uint256 newId) external onlyRole(FACTORY_ROLE) {
         require(
             !tokenCheck[newId].exist,
             string(abi.encodePacked("YEYE: token ID: ", Strings.toString(newId), " already exists"))
         );
 
-        TokenBlueprint memory newCheck = TokenBlueprint(true, isEquipped);
+        TokenBlueprint memory newCheck = TokenBlueprint(true, false, false);
+        tokenCheck[newId] = newCheck;
+    }
+
+    function addRedeemable(uint256 newId) external onlyRole(FACTORY_ROLE) {
+        require(
+            !tokenCheck[newId].exist,
+            string(abi.encodePacked("YEYE: token ID: ", Strings.toString(newId), " already exists"))
+        );
+
+        TokenBlueprint memory newCheck = TokenBlueprint(true, true, false);
         tokenCheck[newId] = newCheck;
     }
 
@@ -56,7 +67,7 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         );
 
         equippedToken[newId] = newToken;
-        TokenBlueprint memory newCheck = TokenBlueprint(true, true);
+        TokenBlueprint memory newCheck = TokenBlueprint(true, false, true);
         tokenCheck[newId] = newCheck;
     }
 
