@@ -2,9 +2,6 @@
 pragma solidity ^0.8.4;
 
 import "./YeyeVault.sol";
-import "./Structs.sol";
-import "./Traits.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract YeyeFactory is AccessControl {
