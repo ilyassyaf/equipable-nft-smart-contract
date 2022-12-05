@@ -24,6 +24,7 @@ contract ListedMint is Ownable {
         tokens = ids;
         tokenContract = _tokenContract;
         tokenPrice = _tokenPrice;
+        seller = payable(_msgSender());
     }
 
     /*
@@ -44,19 +45,19 @@ contract ListedMint is Ownable {
     * @dev listed mint function
     */
     function mint(bytes32[] calldata merkleProof, uint256 amount) public payable {
-        uint maxMint = tokens.length;
-        uint _claimed = claimed[msg.sender];
-        require((amount + _claimed) <= maxMint, "No more ticket for you");
+        require(MerkleProof.verify(merkleProof, merkleRoot, toBytes32(_msgSender())) == true, "Not whitelisted!");
         require(msg.value >= (tokenPrice * amount), "Not enough ETH!");
-        require(MerkleProof.verify(merkleProof, merkleRoot, toBytes32(msg.sender)) == true, "Not whitelisted!");
+        uint maxMint = tokens.length;
+        uint _claimed = claimed[_msgSender()];
+        require((amount + _claimed) <= maxMint, "No more ticket for you");
 
         YeyeBase mintContract = YeyeBase(tokenContract);
         for (uint i = _claimed; i < (_claimed + amount); i++) 
         {
-            mintContract.mint(msg.sender, tokens[i], 1, "0x00");
+            mintContract.mint(_msgSender(), tokens[i], 1, "0x00");
         }
         
-        claimed[msg.sender] += amount;
+        claimed[_msgSender()] += amount;
     }
 
     function toBytes32(address addr) internal pure returns (bytes32) {
