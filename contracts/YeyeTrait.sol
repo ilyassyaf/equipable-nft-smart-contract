@@ -15,7 +15,7 @@ contract YeyeTrait is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     // Name of the collection
-    string public name = "YEYE Factory: Traits";
+    string public name = "YEYE NFT: Traits";
 
     // Trait Blueprint
     struct TraitBlueprint {
@@ -33,6 +33,17 @@ contract YeyeTrait is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     mapping(string => Category) public categoryCheck;
     string[] public categories;
 
+    // check if token id already registered/exist
+    modifier catNotExist(string[] calldata cats) {
+        for (uint i = 0; i < cats.length; i++) 
+        {
+            require(
+                !categoryCheck[cats[i]].exist,
+                string(abi.encodePacked("YEYE TRAIT: categoy: ", cats[i], " already exists"))
+            );
+        }
+        _;
+    }
 
     constructor(string memory _uri) ERC1155(_uri) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -44,28 +55,26 @@ contract YeyeTrait is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     /*
     * @dev add new Category of traits
     */
-    function addCategory(string memory newCategory) public onlyRole(FACTORY_ROLE) {
-        require(
-            !categoryCheck[newCategory].exist,
-            "YEYE TRAITS: category already exists"
-        );
-        categories.push(newCategory);
-        Category memory newCat = Category(true, (categories.length - 1));
-        categoryCheck[newCategory] = newCat;
+    function registerCategory(string[] calldata newCategories) public catNotExist(newCategories) onlyRole(FACTORY_ROLE) {
+        for (uint i = 0; i < newCategories.length; i++) 
+        {
+            categories.push(newCategories[i]);
+            Category memory newCat = Category(true, (categories.length - 1));
+            categoryCheck[newCategories[i]] = newCat;   
+        }
     }
 
     /*
-    * @dev add Trait NFT before minting, make sure the ID is same as metadata ID and category is exist in the contract
+    * @dev register Trait NFT to contract, make sure the ID is same as metadata ID and category is exist in the contract
     */
-    function addTrait(uint256 id, string memory category, bool overrides) public onlyRole(FACTORY_ROLE) {
-        require(!traits[id].exist, "YEYE TRAITS: trait already exists");
-        require(categoryCheck[category].exist, "YEYE TRAITS: category doesn't exists");
-        TraitBlueprint memory newTrait = TraitBlueprint(
-            true,
-            category,
-            overrides
-        );
-        traits[id] = newTrait;
+    function registerTrait(uint256[] calldata ids, TraitBlueprint[] memory _data) public onlyRole(FACTORY_ROLE) {
+        require(ids.length == _data.length, "YEYE TRAITS: input length mismatch");
+        for (uint i = 0; i < ids.length; i++) 
+        {
+            require(!traits[ids[i]].exist, string(abi.encodePacked("YEYE TRAITS: trait id ", Strings.toString(ids[i]), " already exists")));
+            require(categoryCheck[_data[i].category].exist, string(abi.encodePacked("YEYE TRAIT: categoy ", _data[i].category, " doesn't exists")));
+            traits[ids[i]] = _data[i];   
+        }
     }
 
     /*

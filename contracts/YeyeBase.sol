@@ -15,13 +15,13 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     // Name of the collection
-    string public name = "YEYE Factory";
+    string public name = "YEYE NFT";
 
     // Base Blueprint
     struct TokenBlueprint {
         bool exist; // check if trait exist
         bool redeemable; // check if token redeemable
-        bool isEquipped; // check if Base NFT or Equipped NFT
+        bool equipable; // check if NFT is equipable
     }
     mapping(uint256 => TokenBlueprint) public tokenCheck;
 
@@ -34,6 +34,18 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     }
     mapping(uint256 => YeyeBlueprint) public equippedToken;
 
+    // check if token id already registered/exist
+    modifier notExist(uint256[] calldata ids) {
+        for (uint i = 0; i < ids.length; i++) 
+        {
+            require(
+                !tokenCheck[ids[i]].exist,
+                string(abi.encodePacked("YEYE: token ID: ", Strings.toString(ids[i]), " already exists"))
+            );
+        }
+        _;
+    }
+
     constructor(string memory _uri) ERC1155(_uri) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(URI_SETTER_ROLE, msg.sender);
@@ -42,42 +54,49 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     }
 
     /*
+    * @dev add standalone NFT before minting, make sure the ID is same as metadata ID
+    */
+    function registerStandalone(uint256[] calldata newIds) external notExist(newIds) onlyRole(FACTORY_ROLE) {
+        TokenBlueprint memory newCheck = TokenBlueprint(true, false, false);
+        for (uint i = 0; i < newIds.length; i++) 
+        {
+            tokenCheck[newIds[i]] = newCheck;
+        }
+    }
+
+    /*
     * @dev add Base NFT before minting, make sure the ID is same as metadata ID
     */
-    function addBase(uint256 newId) external onlyRole(FACTORY_ROLE) {
+    function registerBase(uint256[] calldata newIds) external notExist(newIds) onlyRole(FACTORY_ROLE) {
+        TokenBlueprint memory newCheck = TokenBlueprint(true, false, true);
+        for (uint i = 0; i < newIds.length; i++) 
+        {
+            tokenCheck[newIds[i]] = newCheck;
+        }
+    }
+
+    /*
+    * @dev add Redeemable NFT (Tickets, Lootbox) before minting, make sure the ID is same as metadata ID
+    */
+    function registerRedeemable(uint256[] calldata newIds) external notExist(newIds) onlyRole(FACTORY_ROLE) {
+        TokenBlueprint memory newCheck = TokenBlueprint(true, true, false);
+        for (uint i = 0; i < newIds.length; i++) 
+        {
+            tokenCheck[newIds[i]] = newCheck;
+        }
+    }
+
+    /*
+    * @dev add Equipped NFT before minting, make sure the ID is same as metadata ID
+    */
+    function registerEquipped(uint256 newId, YeyeBlueprint memory newToken) external onlyRole(FACTORY_ROLE) {
         require(
             !tokenCheck[newId].exist,
             string(abi.encodePacked("YEYE: token ID: ", Strings.toString(newId), " already exists"))
         );
 
         TokenBlueprint memory newCheck = TokenBlueprint(true, false, false);
-        tokenCheck[newId] = newCheck;
-    }
-
-    /*
-    * @dev add Redeemable NFT (Tickets, Lootbox) before minting, make sure the ID is same as metadata ID
-    */
-    function addRedeemable(uint256 newId) external onlyRole(FACTORY_ROLE) {
-        require(
-            !tokenCheck[newId].exist,
-            string(abi.encodePacked("YEYE: token ID: ", Strings.toString(newId), " already exists"))
-        );
-
-        TokenBlueprint memory newCheck = TokenBlueprint(true, true, false);
-        tokenCheck[newId] = newCheck;
-    }
-
-    /*
-    * @dev add Equipped NFT before minting, make sure the ID is same as metadata ID
-    */
-    function addEquipped(uint256 newId, YeyeBlueprint memory newToken) external onlyRole(FACTORY_ROLE) {
-        require(
-            !tokenCheck[newId].exist,
-            string(abi.encodePacked("YEYE: token ID: ", Strings.toString(newId), " already exists"))
-        );
-
         equippedToken[newId] = newToken;
-        TokenBlueprint memory newCheck = TokenBlueprint(true, false, true);
         tokenCheck[newId] = newCheck;
     }
 
@@ -110,19 +129,35 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     }
 
     /*
+    * @dev function for factory to burn stored token
+    */
+    function factoryBurn(address account, uint256 id, uint256 value) public onlyRole(FACTORY_ROLE) {
+        _burn(account, id, value);
+    }
+
+    /*
+    * @dev batch version of factoryBurn
+    */
+    function factoryBurnBatch(address account, uint256[] memory ids, uint256[] memory values) public onlyRole(FACTORY_ROLE) {
+        _burnBatch(account, ids, values);
+    }
+
+    /*
     * @dev before token transfer hook
     */
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override(ERC1155, ERC1155Supply) {
-        /*
-         * @dev check if token with corresponding id is exists
-         */
-        for (uint256 i; i < ids.length; i++) {
-            require(
-                tokenCheck[ids[i]].exist,
-                string(abi.encodePacked("YEYE TRAITS: token ID: ", Strings.toString(ids[i]), " doesn't exists"))
-            );
-        }
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+        if (from == address(0)) {
+            /*
+            * @dev check if token with corresponding id is exists
+            */
+            for (uint256 i; i < ids.length; i++) {
+                require(
+                    tokenCheck[ids[i]].exist,
+                    string(abi.encodePacked("YEYE TRAITS: token ID: ", Strings.toString(ids[i]), " doesn't exists"))
+                );
+            }
+        }
     }
 
     /*
