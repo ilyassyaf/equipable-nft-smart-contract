@@ -5,6 +5,7 @@ import "./ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./ERC1155Burnable.sol";
 import "./ERC1155Supply.sol";
+import "./YeyeVault.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -34,6 +35,9 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     }
     mapping(uint256 => YeyeBlueprint) public equippedToken;
 
+    // Vault address
+    address public vaultAddress;
+
     // check if token id already registered/exist
     modifier notExist(uint256[] calldata ids) {
         for (uint i = 0; i < ids.length; i++) 
@@ -46,11 +50,12 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         _;
     }
 
-    constructor(string memory _uri) ERC1155(_uri) {
+    constructor(string memory _uri, address _vaultAddress) ERC1155(_uri) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(URI_SETTER_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(FACTORY_ROLE, msg.sender);
+        vaultAddress = _vaultAddress;
     }
 
     /*
@@ -103,6 +108,13 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
     /*
     * @dev set Uri of Metadata
     */
+    function setVaultAddress(address _newAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        vaultAddress = _newAddress;
+    }
+
+    /*
+    * @dev set Uri of Metadata
+    */
     function setUri(string memory _newUri) public onlyRole(URI_SETTER_ROLE) {
         ERC1155._setURI(_newUri);
     }
@@ -149,7 +161,7 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
         if (from == address(0)) {
             /*
-            * @dev check if token with corresponding id is exists
+            * @dev check if token with corresponding id is exists before mint
             */
             for (uint256 i; i < ids.length; i++) {
                 require(
@@ -157,6 +169,20 @@ contract YeyeBase is ERC1155, AccessControl, ERC1155Burnable, ERC1155Supply {
                     string(abi.encodePacked("YEYE TRAITS: token ID: ", Strings.toString(ids[i]), " doesn't exists"))
                 );
             }
+        }
+        if (from != address(0)) {
+            /*
+            * @dev transfer base & traits saved in vault to destination address
+            */
+            for (uint i = 0; i < ids.length; i++) 
+            {
+                YeyeBlueprint memory nftData = equippedToken[ids[i]];
+                if (!nftData.exist) continue;
+                YeyeVault vaultContract = YeyeVault(vaultAddress);
+                vaultContract.transferBase(from, to, nftData.base);
+                vaultContract.transferTraits(from, to, nftData.traits);
+            }
+            
         }
     }
 
