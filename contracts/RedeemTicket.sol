@@ -18,9 +18,24 @@ contract RedeemTicket is Ownable {
     mapping(uint256 => uint) public traitLevel;
     mapping(uint256 => uint) public baseLevel;
 
+    struct GetResult {
+        uint256 id;
+        uint level;
+        uint price;
+    }
+    struct SetResult {
+        uint256 id;
+        uint level;
+    }
+
+    struct GetSetLevel {
+        uint level;
+        uint price;
+    }
+
     // NFT List
-    uint256[] bases;
-    uint256[] traits;
+    uint256[] public bases;
+    uint256[] public traits;
 
     // mapping quota for each address
     mapping(address => uint) public quota;
@@ -77,6 +92,34 @@ contract RedeemTicket is Ownable {
         }
         require(ticketCount > 0, "REDEEM: You don't have any ticket");
         _;
+    }
+
+    function setLevel(GetSetLevel[] calldata data) public onlyOwner {
+        
+    }
+
+    function setBase(SetResult[] calldata data) public onlyOwner {
+        YeyeBase baseContract = YeyeBase(baseAddress);
+        for (uint i = 0; i < data.length; i++) 
+        {
+            (bool exist,,) = baseContract.tokenCheck(data[i].id);
+            require(exist, string(abi.encodePacked("REDEEM: Token with ID: ", Strings.toString(data[i].id), " doesn't exist")));
+            require(levelData[data[i].level].exist, string(abi.encodePacked("REDEEM: Level data: ", Strings.toString(data[i].level), " doesn't exist")));
+            baseLevel[data[i].id] = data[i].level;
+            bases.push(data[i].id);
+        }
+    }
+
+    function getBase() public view returns (GetResult[] memory) {
+        uint256[] memory data = bases;
+        GetResult[] memory result = new GetResult[](data.length);
+        for (uint i = 0; i < data.length; i++) 
+        {
+            result[i].id = data[i];
+            result[i].level = baseLevel[data[i]];
+            result[i].price = levelData[baseLevel[data[i]]].price;
+        }
+        return result;
     }
 
     function setTickets(uint256[] calldata _tickets) public isClosed {
