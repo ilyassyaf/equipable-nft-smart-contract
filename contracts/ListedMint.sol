@@ -147,6 +147,10 @@ contract ListedMint is Ownable {
         closedIn = block.timestamp + (duration * 1 hours);
     }
 
+    function forceClose() public onlyOwner isNotClosed {
+        closedIn = 0;
+    }
+
     /*
     * @dev Transfer funds to withdraw address
     */
